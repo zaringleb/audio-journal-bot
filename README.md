@@ -13,11 +13,14 @@ An end-to-end **voice-to-Notion journal** built with Python. Speak your thoughts
 ```
 audio-journal-bot/
 ├── src/                # Python package
-│   └── telegram_bot.py # Current bot entry-point
+│   ├── telegram_bot.py # Current bot entry-point
+│   ├── transcription.py # Whisper wrapper
+│   └── llm_polish.py   # LLM-powered transcript polishing
 ├── voice_messages/     # Saved .ogg/.mp3 voice notes
 ├── .env                # Secrets (TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, …)
 ├── requirements.txt    # Python dependencies
 ├── README.md           # You are here 🡅
+├── tests/              # Unit tests
 └── .gitignore          # Ignore venv, .env, etc.
 ```
 
@@ -37,6 +40,9 @@ cp .env.example .env  # or create manually
 
 # Run the bot
 python src/telegram_bot.py
+
+# Run unit tests
+python -m unittest discover -s tests -v
 ```
 
 ---
@@ -52,8 +58,9 @@ Classic Cursor-style checklist – ticked items are **done** in this repo.
 | ✅ | Basic Telegram bot skeleton |
 | ✅ | Print all incoming messages |
 | ✅ | Save voice/audio messages to `voice_messages/` and log filename |
-| ⬜ | Transcribe audio with OpenAI Whisper |
-| ⬜ | Chunk transcription (≈1-2k tokens each) |
+| ✅ | Transcribe audio with OpenAI Whisper |
+| ✅ | Chunk transcription (≈1-2k tokens each) |
+| ✅ | Polish transcript with LLM |
 | ⬜ | Notion integration – create daily pages & append chunks |
 | ⬜ | Error handling & retry logic (tenacity) |
 | ⬜ | CLI script for searching history |
