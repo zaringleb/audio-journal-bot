@@ -1,0 +1,6 @@
+python-telegram-bot==21.6
+openai==1.37.0
+notion-client==2.0.0
+pydantic==2.8.2
+python-dotenv==1.0.1
+tenacity==8.3.0
