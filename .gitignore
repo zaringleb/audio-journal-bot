@@ -1,3 +1,4 @@
 .env
 .venv/
 voice_messages/
+transcripts/

@@ -15,7 +15,10 @@ audio-journal-bot/
 ├── src/                # Python package
 │   ├── telegram_bot.py # Current bot entry-point
 │   ├── transcription.py # Whisper wrapper
-│   └── llm_polish.py   # LLM-powered transcript polishing
+│   ├── llm_polish.py   # LLM-powered transcript polishing
+│   ├── notion_integration.py # Notion API helper (chunk-aware)
+│   ├── text_utils.py   # Generic text utilities (chunking)
+│   └── date_utils.py   # Date helpers (04:00 cutoff)
 ├── voice_messages/     # Saved .ogg/.mp3 voice notes
 ├── .env                # Secrets (TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, …)
 ├── requirements.txt    # Python dependencies
@@ -61,11 +64,11 @@ Classic Cursor-style checklist – ticked items are **done** in this repo.
 | ✅ | Transcribe audio with OpenAI Whisper |
 | ✅ | Chunk transcription (≈1-2k tokens each) |
 | ✅ | Polish transcript with LLM |
-| ⬜ | Notion integration – create daily pages & append chunks |
-| ⬜ | Error handling & retry logic (tenacity) |
-| ⬜ | CLI script for searching history |
-| ⬜ | Dockerfile & dev-container setup |
-| ⬜ | Optional webhook deployment (serverless) |
+| ✅ | Notion integration – create daily pages & append chunks |
+| ⬜ | Orchestrate end-to-end pipeline (Telegram → Whisper → LLM → Notion) |
+| ⬜ | Responding to the user |
+| ⬜ | Storing all raw transcripts |
+| ⬜ | Logging |
 
 ---
 
@@ -75,7 +78,8 @@ Create a `.env` file with:
 TELEGRAM_BOT_TOKEN=xxxxx
 OPENAI_API_KEY=xxxxx
 NOTION_API_KEY=xxxxx
-NOTION_DATABASE_ID=xxxxx  # Target Notion DB / page
+NOTION_DATABASE_ID=xxxxx  # Target Notion DB
+NOTION_TEST_DATABASE_ID=xxxxx  # Testing Notion DB
 ```
 
 ---
