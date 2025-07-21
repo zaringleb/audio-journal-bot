@@ -38,7 +38,14 @@ logging.basicConfig(
 )
 
 
-async def run_pipeline(audio_path: str, message_dt: datetime, user: str):
+async def run_pipeline(
+    audio_path: str,
+    message_dt: datetime,
+    user: str,
+    *,
+    chat_id: int,
+    bot,
+):
     """Blocking IO heavy pipeline executed in a threadpool."""
 
     loop = asyncio.get_running_loop()
@@ -68,8 +75,20 @@ async def run_pipeline(audio_path: str, message_dt: datetime, user: str):
         notion_url = push_from_files(json_path, transcript_path, message_dt=message_dt)
         logging.info(f"[Pipeline] Notion page created: {notion_url}")
 
+        # Cleanup: remove original audio file to save space
+        try:
+            os.remove(audio_path)
+            logging.info(f"[Pipeline] Removed audio file {audio_path}")
+        except OSError as exc:
+            logging.warning(f"[Pipeline] Could not delete audio file {audio_path}: {exc}")
+
+        return notion_url
+
     # Run in default executor so Telegram handlers stay responsive
-    await loop.run_in_executor(None, _blocking)
+    notion_url = await loop.run_in_executor(None, _blocking)
+
+    # Notify user (async Telegram API)
+    await bot.send_message(chat_id=chat_id, text=f"✅ Journal entry saved to Notion!\n{notion_url}")
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user.username or update.effective_user.id
@@ -86,7 +105,15 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.info(f"Saved audio message from {user} → {filename}")
 
         # Kick off processing pipeline (non-blocking for Telegram)
-        asyncio.create_task(run_pipeline(filename, update.message.date, user))
+        asyncio.create_task(
+            run_pipeline(
+                filename,
+                update.message.date,
+                user,
+                chat_id=update.effective_chat.id,
+                bot=context.bot,
+            )
+        )
     else:
         logging.info(f"Received text message from {user}: {update.message.text}")
 

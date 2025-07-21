@@ -22,7 +22,7 @@ from src.text_utils import chunk_text
 
 load_dotenv()
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
-NOTION_DATABASE_ID = os.getenv("NOTION_TEST_DATABASE_ID")
+NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 
 if NOTION_API_KEY is None or NOTION_DATABASE_ID is None:
     raise RuntimeError("NOTION_API_KEY and NOTION_TEST_DATABASE_ID must be set in .env")

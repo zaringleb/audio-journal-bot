@@ -42,7 +42,13 @@ pip install -r requirements.txt
 cp .env.example .env  # or create manually
 
 # Run the bot
-python src/telegram_bot.py
+# Option A (recommended – works from anywhere):
+python -m src.telegram_bot
+
+# Option B (legacy):
+# PYTHONPATH=$PWD python src/telegram_bot.py
+
+The pipeline deletes the original voice file after it has been transcribed and saved to Notion, so the server disk stays clean.
 
 # Run unit tests
 python -m unittest discover -s tests -v
