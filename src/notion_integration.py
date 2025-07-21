@@ -22,9 +22,9 @@ from src.text_utils import chunk_text
 
 load_dotenv()
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
-NOTION_TEST_DATABASE_ID = os.getenv("NOTION_TEST_DATABASE_ID")
+NOTION_DATABASE_ID = os.getenv("NOTION_TEST_DATABASE_ID")
 
-if NOTION_API_KEY is None or NOTION_TEST_DATABASE_ID is None:
+if NOTION_API_KEY is None or NOTION_DATABASE_ID is None:
     raise RuntimeError("NOTION_API_KEY and NOTION_TEST_DATABASE_ID must be set in .env")
 
 client = Client(auth=NOTION_API_KEY)
@@ -78,7 +78,7 @@ def create_journal_entry(
         props["Raw"] = {"rich_text": _rich_text(raw)}
 
     response = client.pages.create(
-        parent={"database_id": NOTION_TEST_DATABASE_ID},
+        parent={"database_id": NOTION_DATABASE_ID},
         properties=props,
     )
     return response
