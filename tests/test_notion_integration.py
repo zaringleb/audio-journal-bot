@@ -1,11 +1,16 @@
 import os
 import unittest
 from datetime import date
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 RUN_NOTION = os.getenv("RUN_NOTION_TESTS") == "1"
+NOTION_TEST_DATABASE_ID = os.getenv("NOTION_TEST_DATABASE_ID")
 
 if RUN_NOTION:
-    from src.notion_integration import client, create_journal_entry, NOTION_TEST_DATABASE_ID
+    from src.notion_integration import client, create_journal_entry
 
 
 @unittest.skipUnless(RUN_NOTION, "Set RUN_NOTION_TESTS=1 to enable Notion API tests.")
@@ -23,4 +28,4 @@ class NotionIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(page["object"], "page")
         # Clean up: archive the page so DB stays tidy
-        client.pages.update(page["id"], archived=True) 
+        client.pages.update(page["id"], archived=True)

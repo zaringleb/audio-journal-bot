@@ -49,4 +49,4 @@ def journal_date(
     if local_dt.time() < cutoff:
         local_dt -= timedelta(days=1)
 
-    return local_dt.date() 
+    return local_dt.date()

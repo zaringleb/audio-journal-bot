@@ -6,14 +6,15 @@ __all__ = ["chunk_text"]
 
 
 def chunk_text(text: str, max_chars: int = 2000) -> List[str]:
-    """Split *text* into chunks no longer than *max_chars* **without** breaking words.
+    """Split *text* into chunks no longer than *max_chars*, preferring word boundaries.
 
     • Whitespace (space, tab, newline, etc.) is used as the preferred break point.
     • The original spacing and line-breaks inside each chunk are preserved – we slice
       the *original string* rather than re-joining tokens.
-    • If a *single word* exceeds *max_chars*, that word becomes its own chunk and
-      therefore *can* exceed the limit — this mirrors the behaviour we need for
-      rare edge-cases like very long URLs.
+    • If no whitespace is found within a *max_chars* window, the text will be
+      hard-truncated at the character limit to ensure all chunks stay ≤ *max_chars*.
+      This handles edge cases like very long URLs or words while maintaining strict
+      size limits required by APIs like Notion.
     """
 
     if max_chars <= 0:
@@ -55,7 +56,7 @@ def chunk_text(text: str, max_chars: int = 2000) -> List[str]:
             start = end
         else:
             # Cut at the last whitespace (include it) so we preserve spacing
-            chunks.append(text[start:last_break + 1])
+            chunks.append(text[start : last_break + 1])
             start = last_break + 1  # next chunk starts after the whitespace char
 
-    return chunks 
+    return chunks

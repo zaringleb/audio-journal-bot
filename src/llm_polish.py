@@ -21,9 +21,9 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 JSON_PROMPT = (
     "You are a helpful assistant that receives a raw speech transcript. "
-    "Return a JSON object with **exactly two keys**:\n"\
-    "1. 'polished'  – a *single string* containing the polished transcript in first-person voice. Use blank lines to separate paragraphs. Keep meaning; don't add new content.\n"\
-    "2. 'summary'   – a single short phrase (≈3-8 words, no verbs like 'reflecting/thinking') that names the *specific* key event(s) or thought(s). Examples: 'Applied for ILR and built a bot', 'Leaving job; starting open-source work'.\n"\
+    "Return a JSON object with **exactly two keys**:\n"
+    "1. 'polished'  – a *single string* containing the polished transcript in first-person voice. Use blank lines to separate paragraphs. Keep meaning; don't add new content.\n"
+    "2. 'summary'   – a single short phrase (≈3-8 words, no verbs like 'reflecting/thinking') that names the *specific* key event(s) or thought(s). Examples: 'Applied for ILR and built a bot', 'Leaving job; starting open-source work'.\n"
     "Respond with valid JSON only, no markdown fences or extra keys."
 )
 
@@ -53,11 +53,17 @@ def process_transcript(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Polish a transcript using an OpenAI chat model.")
+    parser = argparse.ArgumentParser(
+        description="Polish a transcript using an OpenAI chat model."
+    )
     parser.add_argument("input", help="Path to the transcript text file")
     parser.add_argument("--output", help="Optional output file path (.txt)")
-    parser.add_argument("--model", default="gpt-3.5-turbo-0125", help="OpenAI chat model")
-    parser.add_argument("--temperature", type=float, default=0.2, help="Sampling temperature")
+    parser.add_argument(
+        "--model", default="gpt-3.5-turbo-0125", help="OpenAI chat model"
+    )
+    parser.add_argument(
+        "--temperature", type=float, default=0.2, help="Sampling temperature"
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -75,9 +81,11 @@ def main() -> None:
     out_dir = input_path.parent / "polished"
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / (input_path.stem + out_suffix)
-    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    out_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(f"Processed transcript (JSON) saved → {out_path}")
 
 
 if __name__ == "__main__":
-    main() 
+    main()

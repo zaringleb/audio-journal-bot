@@ -60,6 +60,32 @@ def transcribe_audio(
     return text
 
 
+def transcribe_audio_only(
+    file_path: str,
+    *,
+    model: str = "whisper-1",
+    language: Optional[str] = None,
+) -> str:
+    """Transcribe an audio file and return the text without saving to disk.
+
+    This is a more direct function for pipeline usage where we want to keep
+    data in memory rather than writing intermediate files.
+
+    Args:
+        file_path: Path to the audio file (mp3, ogg, wav, m4a, etc.).
+        model: Whisper model identifier. Defaults to ``"whisper-1"``.
+        language: Optional BCP-47 language tag to bias transcription (e.g. ``"en"``).
+
+    Returns:
+        The transcribed text.
+
+    Raises:
+        FileNotFoundError: If the given *file_path* does not exist.
+        RuntimeError: If the OpenAI API fails or the response is malformed.
+    """
+    return transcribe_audio(file_path, model=model, language=language)
+
+
 def transcribe_and_save(
     file_path: str,
     *,
@@ -90,11 +116,17 @@ if __name__ == "__main__":
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(description="Transcribe an audio file using OpenAI Whisper")
+    parser = argparse.ArgumentParser(
+        description="Transcribe an audio file using OpenAI Whisper"
+    )
     parser.add_argument("file", help="Path to the audio file to transcribe")
     parser.add_argument("--model", default="whisper-1", help="Whisper model name")
     parser.add_argument("--language", help="Optional language code (e.g. 'en', 'ru')")
-    parser.add_argument("--save", action="store_true", help="Save transcript to a text file in ./transcripts/")
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Save transcript to a text file in ./transcripts/",
+    )
     parser.add_argument("--output", help="Explicit output file path (.txt)")
 
     args = parser.parse_args()
@@ -110,11 +142,13 @@ if __name__ == "__main__":
             print(f"Transcript saved → {out_path}")
             result = None
         else:
-            result = transcribe_audio(args.file, model=args.model, language=args.language)
+            result = transcribe_audio(
+                args.file, model=args.model, language=args.language
+            )
     except Exception as exc:
         print(f"Error: {exc}")
         sys.exit(1)
 
     if result:
         print("--- Transcription result ---\n")
-        print(result) 
+        print(result)

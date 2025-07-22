@@ -1,4 +1,5 @@
 .env
 .venv/
 voice_messages/
-transcripts/
+journal_entries/
+logs/

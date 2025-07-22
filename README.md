@@ -1,120 +1,134 @@
-# 📝 Audio Journal Bot
+# 🎙️ Audio Journal Bot
 
-An end-to-end **voice-to-Notion journal** built with Python. Speak your thoughts on Telegram, and the bot will:
+A **voice-to-Notion journal** that transforms your spoken thoughts into organized, searchable entries. Simply send voice messages to a Telegram bot, and your audio is automatically transcribed, polished, and saved to Notion with proper organization.
 
-1. Collect voice messages via Telegram.
-2. Automatically transcribe audio with OpenAI Whisper.
-3. Chunk & organise the text in Notion (grouped by day).
-4. *(planned)* Search, review & analyse your journal in Notion.
+## ✨ What It Does
 
----
+1. **📱 Voice Input**: Send voice messages through Telegram
+2. **🎯 Smart Transcription**: Uses OpenAI Whisper for accurate speech-to-text
+3. **✍️ AI Polishing**: Cleans up transcripts while preserving your voice and meaning
+4. **📚 Notion Integration**: Automatically creates organized journal entries with proper dates
+5. **🗂️ Artifact Storage**: Saves both raw and polished transcripts for future reference
 
-## 📂 Project Structure
-```
-audio-journal-bot/
-├── src/                # Python package
-│   ├── telegram_bot.py # Current bot entry-point
-│   ├── transcription.py # Whisper wrapper
-│   ├── llm_polish.py   # LLM-powered transcript polishing
-│   ├── notion_integration.py # Notion API helper (chunk-aware)
-│   ├── text_utils.py   # Generic text utilities (chunking)
-│   └── date_utils.py   # Date helpers (04:00 cutoff)
-├── voice_messages/     # Saved .ogg/.mp3 voice notes
-├── .env                # Secrets (TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, …)
-├── requirements.txt    # Python dependencies
-├── README.md           # You are here 🡅
-├── tests/              # Unit tests
-└── .gitignore          # Ignore venv, .env, etc.
-```
+## 🚀 Quick Setup
 
-## 🚀 Quick-start
+### Prerequisites
+- Python 3.9+
+- Telegram Bot Token ([create here](https://t.me/BotFather))
+- OpenAI API Key ([get here](https://platform.openai.com/api-keys))
+- Notion Integration ([setup guide](https://developers.notion.com/docs/create-a-notion-integration))
+
+### Installation
+
 ```bash
-# Clone & enter repo
-git clone <repo-url> && cd audio-journal-bot
+# Clone and enter the project
+git clone <your-repo-url>
+cd audio-journal-bot
 
-# Create and activate venv
-python3 -m venv .venv && source .venv/bin/activate
+# Setup Python environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install deps
+# Install dependencies
 pip install -r requirements.txt
 
-# Add secrets
-cp .env.example .env  # or create manually
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys (see Configuration section)
 
 # Run the bot
-# Option A (recommended – works from anywhere):
 python -m src.telegram_bot
-
-# Option B (legacy):
-# PYTHONPATH=$PWD python src/telegram_bot.py
-
-The pipeline deletes the original voice file after it has been transcribed and saved to Notion, so the server disk stays clean.
-
-# Run unit tests
-python -m unittest discover -s tests -v
 ```
 
----
+## ⚙️ Configuration
 
-## 🛣️ Roadmap / Task Board
-Classic Cursor-style checklist – ticked items are **done** in this repo.
+Create a `.env` file with your API credentials:
 
-| Status | Task |
-| :---: | --- |
-| ✅ | Initialise repo & directory structure |
-| ✅ | Add `.gitignore`, `.env` template |
-| ✅ | Pin core dependencies in `requirements.txt` |
-| ✅ | Basic Telegram bot skeleton |
-| ✅ | Print all incoming messages |
-| ✅ | Save voice/audio messages to `voice_messages/` and log filename |
-| ✅ | Transcribe audio with OpenAI Whisper |
-| ✅ | Chunk transcription (≈1-2k tokens each) |
-| ✅ | Polish transcript with LLM |
-| ✅ | Notion integration – create daily pages & append chunks |
-| ✅ | Orchestrate end-to-end pipeline (Telegram → Whisper → LLM → Notion) |
-| ✅ | Responding to the user |
-| ✅ | Storing all raw transcripts |
-| ✅ | Logging |
+```env
+# Required
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+OPENAI_API_KEY=your_openai_api_key
+NOTION_API_KEY=your_notion_integration_token
+NOTION_DATABASE_ID=your_notion_database_id
 
----
-
-## 🔧 Configuration
-Create a `.env` file with:
-```
-TELEGRAM_BOT_TOKEN=xxxxx
-OPENAI_API_KEY=xxxxx
-NOTION_API_KEY=xxxxx
-NOTION_DATABASE_ID=xxxxx  # Target Notion DB
-NOTION_TEST_DATABASE_ID=xxxxx  # (Optional) Testing Notion DB
-ALLOWED_USERNAME=xxxxx  # (Optional) Safeguarding
+# Optional
+ALLOWED_USERNAME=your_telegram_username  # Restrict bot to specific user
+NOTION_TEST_DATABASE_ID=xxxxx  # Testing Notion DB
 ```
 
----
+### Notion Database Setup
 
-## 🏗️ Architecture Overview
+Your Notion database should have these properties:
+- **Title** (Title): Entry summary/keyword
+- **Date** (Date): Journal date
+- **Structured** (Rich Text): AI-polished transcript
+- **Raw** (Rich Text): Original transcript
+
+## 💡 How It Works
+
 ```
-[User] --voice-->  Telegram Bot  --file-->  /voice_messages
-                                   |                              
-                                   | Whisper (OpenAI)
-                                   v
-                               Transcribed Text
-                                   |
-                                   v
-                            Chunk & Summarise
-                                   |
-                                   v
-                               Notion API
-                                   |
-                                   v
-                         Daily Notion Journal Page
+Telegram bot → Voice Message → Whisper API → LLM Polishing → Notion
 ```
 
-* **Telegram Bot** – Receives messages, downloads audio.
-* **Whisper API** – Performs speech-to-text.
-* **Processing layer** – Splits text into manageable chunks.
-* **Notion Client** – Persists data, grouped by date.
+1. **Send a voice message** to your Telegram bot
+2. **Audio is transcribed** using OpenAI Whisper
+3. **AI polishes the text** while preserving your voice and meaning
+4. **Entry is created** in Notion with proper date logic (entries before 4 AM count as previous day)
+5. **Artifacts are saved** locally in organized directories for backup
 
----
+## 📁 Project Structure
+
+```
+audio-journal-bot/
+├── src/                    # Core application code
+│   ├── telegram_bot.py     # Bot entry point and message handling
+│   ├── transcription.py    # OpenAI Whisper integration
+│   ├── llm_polish.py       # AI text polishing
+│   ├── notion_integration.py # Notion API integration
+│   ├── text_utils.py       # Text chunking utilities
+│   └── date_utils.py       # Date logic
+├── journal_entries/        # Organized archives per entry
+│   └── YYYYMMDD_HHMMSS_id/ # Each entry gets unique directory
+│       ├── raw_transcript.txt
+│       ├── polished.json
+│       └── metadata.json
+├── voice_messages/         # Temporary audio files (auto-deleted)
+├── tests/                  # Unit tests
+└── .env                    # Your API credentials
+```
+
+### ✅ **Current Capabilities**
+- **Voice transcription** with high accuracy
+- **Intelligent text polishing** that preserves meaning
+- **Automatic Notion organization** with date-based logic
+- **Robust error handling** with user feedback
+- **Comprehensive logging** for debugging
+- **Organized local archives** for each entry
+- **User authentication** (optional username restriction)
+
+
+## 🛠️ Usage
+
+1. **Start the bot**: `python -m src.telegram_bot`
+2. **Send voice messages** to your Telegram bot
+3. **Receive confirmation** when entries are saved to Notion
+4. **Check your Notion database** for organized entries
+5. **Find local archives** in `journal_entries/` directories
+
+## 🧪 Testing
+```bash
+python -m unittest discover -s tests -v # Run all tests
+python -m unittest tests.test_text_utils -v # Test specific modules
+RUN_NOTION_TESTS=1 python -m unittest tests.test_notion_integration -v # Test Notion integration (requires API setup)
+```
+
+### Logs
+The bot provides detailed logging to help diagnose issues. Logs are currently output to console only and are lost on restart. Consider implementing file logging for persistent logs.
 
 ## 📜 License
-MIT – see `LICENSE` for details. 
+
+MIT License - feel free to use, modify, and distribute as needed.
+
+---
+
+**Built for personal journaling with privacy and organization in mind.** 🔒 
