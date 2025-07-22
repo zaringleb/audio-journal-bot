@@ -123,7 +123,7 @@ RUN_NOTION_TESTS=1 python -m unittest tests.test_notion_integration -v # Test No
 ```
 
 ### Logs
-The bot provides detailed logging to help diagnose issues. Logs are currently output to console only and are lost on restart. Consider implementing file logging for persistent logs.
+The bot provides detailed logging to help diagnose issues. Logs are saved to `logs/bot.log` with automatic rotation (10MB per file, keeps 5 backups).
 
 ## 📜 License
 
@@ -131,4 +131,4 @@ MIT License - feel free to use, modify, and distribute as needed.
 
 ---
 
-**Built for personal journaling with privacy and organization in mind.** 🔒 
+**Built for personal journaling with privacy and organisation in mind.** 🔒 
