@@ -19,48 +19,19 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-SYSTEM_PROMPT = (
-    "You are a helpful assistant that rewrites a raw speech transcript "
-    "into clear, well-punctuated, readable text while preserving the speaker's "
-    "original voice and meaning. Fix obvious grammar issues, add punctuation, "
-    "and split into paragraphs where it makes sense, but do NOT add new content "
-    "or summarise. Return only the polished text."
-)
-
 JSON_PROMPT = (
     "You are a helpful assistant that receives a raw speech transcript. "
-    "Return a JSON object with exactly two keys: "
-    "'polished' – the lightly edited version of the transcript (punctuation, paragraph breaks, no added content) and "
-    "'keyword' – short keywords based summury of the transcript. "
-    "Do not wrap the JSON in markdown or any other text."
+    "Return a JSON object with **exactly two keys**:\n"\
+    "1. 'polished'  – a *single string* containing the polished transcript in first-person voice. Use blank lines to separate paragraphs. Keep meaning; don't add new content.\n"\
+    "2. 'summary'   – a single short phrase (≈3-8 words, no verbs like 'reflecting/thinking') that names the *specific* key event(s) or thought(s). Examples: 'Applied for ILR and built a bot', 'Leaving job; starting open-source work'.\n"\
+    "Respond with valid JSON only, no markdown fences or extra keys."
 )
-
-
-def polish_text(
-    text: str,
-    *,
-    model: str = "gpt-3.5-turbo-0125",
-    temperature: float = 0.2,
-    max_tokens: Optional[int] = None,
-) -> str:
-    """Send *text* to the LLM and return the polished version."""
-
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": text},
-        ],
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
-    return response.choices[0].message.content.strip()
 
 
 def process_transcript(
     text: str,
     *,
-    model: str = "gpt-3.5-turbo-0125",
+    model: str = "gpt-4o-mini",
     temperature: float = 0.3,
     max_tokens: Optional[int] = None,
 ) -> dict[str, str]:
@@ -87,7 +58,6 @@ def main() -> None:
     parser.add_argument("--output", help="Optional output file path (.txt)")
     parser.add_argument("--model", default="gpt-3.5-turbo-0125", help="OpenAI chat model")
     parser.add_argument("--temperature", type=float, default=0.2, help="Sampling temperature")
-    parser.add_argument("--json", action="store_true", help="Output JSON with polished text and keyword")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -96,34 +66,17 @@ def main() -> None:
 
     raw_text = input_path.read_text(encoding="utf-8")
 
-    if args.json:
-        result = process_transcript(
-            raw_text,
-            model=args.model,
-            temperature=args.temperature,
-        )
-        out_suffix = "_processed.json"
-        out_dir = input_path.parent / "polished"
-        out_dir.mkdir(exist_ok=True)
-        out_path = out_dir / (input_path.stem + out_suffix)
-        out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"Processed transcript (JSON) saved → {out_path}")
-    else:
-        polished = polish_text(
-            raw_text,
-            model=args.model,
-            temperature=args.temperature,
-        )
-
-        if args.output:
-            out_path = Path(args.output)
-        else:
-            out_dir = input_path.parent / "polished"
-            out_dir.mkdir(exist_ok=True)
-            out_path = out_dir / (input_path.stem + "_polished.txt")
-
-        out_path.write_text(polished, encoding="utf-8")
-        print(f"Polished transcript saved → {out_path}")
+    result = process_transcript(
+        raw_text,
+        model=args.model,
+        temperature=args.temperature,
+    )
+    out_suffix = "_processed.json"
+    out_dir = input_path.parent / "polished"
+    out_dir.mkdir(exist_ok=True)
+    out_path = out_dir / (input_path.stem + out_suffix)
+    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Processed transcript (JSON) saved → {out_path}")
 
 
 if __name__ == "__main__":

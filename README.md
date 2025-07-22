@@ -71,10 +71,10 @@ Classic Cursor-style checklist – ticked items are **done** in this repo.
 | ✅ | Chunk transcription (≈1-2k tokens each) |
 | ✅ | Polish transcript with LLM |
 | ✅ | Notion integration – create daily pages & append chunks |
-| ⬜ | Orchestrate end-to-end pipeline (Telegram → Whisper → LLM → Notion) |
-| ⬜ | Responding to the user |
-| ⬜ | Storing all raw transcripts |
-| ⬜ | Logging |
+| ✅ | Orchestrate end-to-end pipeline (Telegram → Whisper → LLM → Notion) |
+| ✅ | Responding to the user |
+| ✅ | Storing all raw transcripts |
+| ✅ | Logging |
 
 ---
 
@@ -85,7 +85,8 @@ TELEGRAM_BOT_TOKEN=xxxxx
 OPENAI_API_KEY=xxxxx
 NOTION_API_KEY=xxxxx
 NOTION_DATABASE_ID=xxxxx  # Target Notion DB
-NOTION_TEST_DATABASE_ID=xxxxx  # Testing Notion DB
+NOTION_TEST_DATABASE_ID=xxxxx  # (Optional) Testing Notion DB
+ALLOWED_USERNAME=xxxxx  # (Optional) Safeguarding
 ```
 
 ---

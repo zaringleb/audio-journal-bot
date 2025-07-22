@@ -103,7 +103,8 @@ def push_from_files(
     from src.date_utils import journal_date as _journal_date
 
     processed_data = json.loads(Path(processed_json_path).read_text(encoding="utf-8"))
-    keyword = processed_data["keyword"]
+    # Accept 'summary' as primary, fallback to 'keyword'
+    title_text = processed_data.get("summary") or "Untitled"
     structured_full = processed_data["polished"]
 
     # Chunk structured text according to Notion limits
@@ -130,7 +131,7 @@ def push_from_files(
     # ----------------------------------------
 
     page = create_journal_entry(
-        keyword=keyword,
+        keyword=title_text,
         journal_date=logical_date,
         structured=structured_chunks[0],
     )

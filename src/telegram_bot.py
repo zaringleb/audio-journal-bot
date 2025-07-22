@@ -11,6 +11,7 @@ from src.notion_integration import push_from_files
 
 from dotenv import load_dotenv
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
 # Patch event loop for interactive environments (Cursor, Jupyter, etc.)
@@ -23,6 +24,9 @@ except ImportError:
 # Load environment variables
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# Restrict usage to a single Telegram username (default: zaringleb)
+ALLOWED_USERNAME = os.getenv("ALLOWED_USERNAME")
 
 VOICE_DIR = "voice_messages"
 os.makedirs(VOICE_DIR, exist_ok=True)
@@ -87,10 +91,20 @@ async def run_pipeline(
     # Run in default executor so Telegram handlers stay responsive
     notion_url = await loop.run_in_executor(None, _blocking)
 
-    # Notify user (async Telegram API)
-    await bot.send_message(chat_id=chat_id, text=f"✅ Journal entry saved to Notion!\n{notion_url}")
+    # Notify user (async Telegram API) with Markdown link
+    await bot.send_message(
+        chat_id=chat_id,
+        text=f"✅ Journal entry saved to Notion!\n[Open in Notion]({notion_url})",
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True,
+    )
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Allow only messages from the configured user
+    if ALLOWED_USERNAME is not None and (update.effective_user.username or update.effective_user.id) != ALLOWED_USERNAME:
+        logging.warning("Received message from unauthorized user — ignored.")
+        return
+
     user = update.effective_user.username or update.effective_user.id
     if update.message.voice or update.message.audio:
         file = update.message.voice or update.message.audio
@@ -103,6 +117,9 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await tg_file.download_to_drive(filename)
 
         logging.info(f"Saved audio message from {user} → {filename}")
+
+        # Inform user that processing has started
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="⏳ Processing your journal entry…")
 
         # Kick off processing pipeline (non-blocking for Telegram)
         asyncio.create_task(
