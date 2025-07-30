@@ -5,9 +5,9 @@ import logging
 from pathlib import Path
 
 # Import pipeline modules
-from src.transcription import transcribe_audio_only
+from src.transcription import transcribe_audio
 from src.llm_polish import process_transcript
-from src.notion_integration import push_from_memory
+from src.notion_integration import create_entry_from_memory
 
 from dotenv import load_dotenv
 from logging.handlers import RotatingFileHandler
@@ -15,29 +15,16 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Patch event loop for interactive environments (Cursor, Jupyter, etc.)
-try:
-    import nest_asyncio
 
-    nest_asyncio.apply()
-except ImportError:
-    pass
-
-# Load environment variables
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-# Restrict usage to a single Telegram username (default: zaringleb)
 ALLOWED_USERNAME = os.getenv("ALLOWED_USERNAME")
 
 VOICE_DIR = "voice_messages"
 os.makedirs(VOICE_DIR, exist_ok=True)
 
-# Create logs directory
 LOGS_DIR = "logs"
 os.makedirs(LOGS_DIR, exist_ok=True)
-
-# Configure basic logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
@@ -50,11 +37,6 @@ logging.basicConfig(
         # No StreamHandler() = no console spam
     ],
 )
-
-
-# ============================================================================
-# Core Pipeline Functions
-# ============================================================================
 
 
 def pipeline_blocking(audio_path: str, message_dt: datetime, user: str) -> str:
@@ -78,7 +60,7 @@ def pipeline_blocking(audio_path: str, message_dt: datetime, user: str) -> str:
         logging.info(f"[Pipeline] ({user}) Transcribing…")
 
         # 1. Transcribe audio (in memory)
-        raw_transcript = transcribe_audio_only(audio_path)
+        raw_transcript = transcribe_audio(audio_path)
         logging.info(
             f"[Pipeline] Transcription completed ({len(raw_transcript)} characters)"
         )
@@ -92,7 +74,7 @@ def pipeline_blocking(audio_path: str, message_dt: datetime, user: str) -> str:
 
         # 3. Push to Notion and save artifacts
         logging.info("[Pipeline] Pushing to Notion and saving artifacts…")
-        notion_url, entry_dir = push_from_memory(
+        notion_url, entry_dir = create_entry_from_memory(
             raw_transcript=raw_transcript,
             polished_data=polished_data,
             message_dt=message_dt,
@@ -179,28 +161,13 @@ async def run_pipeline(
         )
 
 
-# ============================================================================
-# User Authorization
-# ============================================================================
-
-
 def is_user_authorized(update: Update) -> bool:
-    """Check if the user is authorized to use this bot."""
-    if ALLOWED_USERNAME is None:
-        return True  # No restriction configured
-
-    user_identifier = update.effective_user.username or update.effective_user.id
-    return user_identifier == ALLOWED_USERNAME
+    return ALLOWED_USERNAME is None or get_user_identifier(update) == ALLOWED_USERNAME
 
 
 def get_user_identifier(update: Update) -> str:
     """Get a string identifier for the user (username or ID)."""
     return update.effective_user.username or str(update.effective_user.id)
-
-
-# ============================================================================
-# Command Handlers
-# ============================================================================
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -215,24 +182,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    welcome_message = """🎙️ **Audio Journal Bot**
+    welcome_message = """🎙️ **Welcome to your Audio Journal Bot!**
 
-Welcome! I help you create organized journal entries from voice messages.
+To get started, just send me a voice message.
 
-**How it works:**
-1. 🎤 Send me a voice message
-2. 🤖 I'll transcribe it using AI
-3. ✨ Clean up the text while keeping your voice
-4. 📝 Save it to your Notion database
-5. 📁 Archive everything locally for backup
+I will transcribe it, polish the text using AI, and save it directly to your Notion database.
 
-**What you need:**
-• Just send voice messages - I handle the rest!
-• Your entries are organized by date (4 AM cutoff)
-• Both raw and polished versions are saved
-
-**Ready to start journaling?**
-Send me your first voice message! 🎯"""
+For more details and a list of commands, type /help.
+"""
 
     await update.message.reply_text(
         welcome_message,
@@ -246,41 +203,27 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"User {user} requested help")
     
     if not is_user_authorized(update):
-        await update.message.reply_text(
-            "🚫 Sorry, this bot is restricted to authorized users only."
-        )
         return
     
     help_message = """📚 **Help & Commands**
 
-**Available Commands:**
-• `/start` - Welcome message and introduction
-• `/help` - This help message
+**How It Works**
+1. 🎤 Send me a voice message.
+2. 🤖 I transcribe it using OpenAI Whisper.
+3. ✨ I polish the text to improve clarity while keeping your original voice.
+4. 📝 The entry is saved to your Notion database, automatically dated (with a 4 AM cutoff).
+5. 📁 All artifacts (raw transcript, polished version, metadata) are archived locally for backup.
 
-**How to use:**
-1. **Voice Messages** 🎤
-   - Send any voice message in any language
-   - I'll transcribe and organize it automatically
-   - No length limits, but shorter messages work better
+**Available Commands**
+• `/start` - Shows the welcome message.
+• `/help` - Shows this detailed help guide.
 
-2. **Processing Steps** ⚙️
-   - Transcription via OpenAI Whisper
-   - AI polishing to clean up filler words
-   - Automatic date assignment (4 AM cutoff)
-   - Notion database entry creation
-   - Local backup in organized folders
+**Tips**
+• Speak clearly for the best transcription results.
+• Each voice message becomes a single journal entry.
+• Check your Notion database to see your saved entries.
 
-3. **What gets saved** 💾
-   - **Notion**: Polished entry with title and date
-   - **Local**: Raw transcript, polished version, metadata
-
-**Tips:**
-• Speak clearly for best transcription
-• Each message becomes one journal entry
-• Entries before 4 AM count as previous day
-• Check your Notion database to see results
-
-Need more help? Just send a voice message to try it out! 🚀"""
+Ready? Just send a voice message! 🚀"""
 
     await update.message.reply_text(
         help_message,
@@ -288,13 +231,13 @@ Need more help? Just send a voice message to try it out! 🚀"""
     )
 
 
-# ============================================================================
-# Message Handlers
-# ============================================================================
-
-
 async def handle_audio_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle voice and audio messages by downloading and processing them."""
+
+    if not is_user_authorized(update):
+        logging.warning(f"Received message from unauthorized user — ignored.")
+        return
+    
     user = get_user_identifier(update)
     file = update.message.voice or update.message.audio
     file_id = file.file_id
@@ -313,7 +256,7 @@ async def handle_audio_message(update: Update, context: ContextTypes.DEFAULT_TYP
         chat_id=update.effective_chat.id, text="⏳ Processing your journal entry…"
     )
 
-    # Kick off processing pipeline (non-blocking for Telegram)
+    # Freeing up the event loop to handle other messages (telegam lib requirement)
     asyncio.create_task(
         run_pipeline(
             filename,
@@ -325,51 +268,20 @@ async def handle_audio_message(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
-async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle text messages (currently just logs them)."""
-    user = get_user_identifier(update)
-    logging.info(f"Received text message from {user}: {update.message.text}")
-    # TODO: Implement text-based journal entries (future enhancement)
+def main() -> None:
+    """Initialize and start the Telegram bot (blocking call)."""
 
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Main message handler that dispatches to specific handlers based on message type."""
-    # Check user authorization first
-    if not is_user_authorized(update):
-        logging.warning(f"Received message from unauthorized user — ignored.")
-        return
-
-    # Dispatch to appropriate handler based on message type
-    if update.message.voice or update.message.audio:
-        await handle_audio_message(update, context)
-    else:
-        await handle_text_message(update, context)
-
-
-# ============================================================================
-# Application Setup
-# ============================================================================
-
-
-async def main():
-    """Initialize and start the Telegram bot."""
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    
-    # Add command handlers
+
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
-    
-    # Add message handler (for voice messages and other content)
-    application.add_handler(MessageHandler(filters.ALL, handle_message))
-    
-    print("Bot is polling for messages...")
-    await application.run_polling()
+    audio_or_voice = filters.AUDIO | filters.VOICE
+    application.add_handler(MessageHandler(audio_or_voice, handle_audio_message))
+
+    print("Bot is polling for messages…")
+    # run_polling() sets up and runs the asyncio loop internally and blocks until shutdown.
+    application.run_polling()
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except RuntimeError as e:
-        # Fallback for already running event loop
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
+    main()

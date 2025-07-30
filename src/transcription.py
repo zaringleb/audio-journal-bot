@@ -8,10 +8,8 @@ from dotenv import load_dotenv
 
 # Load environment variables from a .env file if present (consistent with other modules)
 load_dotenv()
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Initialize the OpenAI client using an explicit api_key to avoid relying on global env state
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Directory where plain-text transcripts are stored when the script is invoked
@@ -58,32 +56,6 @@ def transcribe_audio(
         raise RuntimeError("Unexpected OpenAI response: missing 'text' attribute")
 
     return text
-
-
-def transcribe_audio_only(
-    file_path: str,
-    *,
-    model: str = "whisper-1",
-    language: Optional[str] = None,
-) -> str:
-    """Transcribe an audio file and return the text without saving to disk.
-
-    This is a more direct function for pipeline usage where we want to keep
-    data in memory rather than writing intermediate files.
-
-    Args:
-        file_path: Path to the audio file (mp3, ogg, wav, m4a, etc.).
-        model: Whisper model identifier. Defaults to ``"whisper-1"``.
-        language: Optional BCP-47 language tag to bias transcription (e.g. ``"en"``).
-
-    Returns:
-        The transcribed text.
-
-    Raises:
-        FileNotFoundError: If the given *file_path* does not exist.
-        RuntimeError: If the OpenAI API fails or the response is malformed.
-    """
-    return transcribe_audio(file_path, model=model, language=language)
 
 
 def transcribe_and_save(

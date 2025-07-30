@@ -14,17 +14,18 @@ import uuid
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+import json
 
 from dotenv import load_dotenv
 from notion_client import Client
 
 # Local utilities
 from src.text_utils import chunk_text
+from src.date_utils import journal_date as _journal_date
 
 load_dotenv()
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
-
 if NOTION_API_KEY is None or NOTION_DATABASE_ID is None:
     raise RuntimeError("NOTION_API_KEY and NOTION_TEST_DATABASE_ID must be set in .env")
 
@@ -32,6 +33,8 @@ client = Client(auth=NOTION_API_KEY)
 
 # Notion rich-text limit; stay comfortably below 2000 characters.
 MAX_CHARS = 1800
+# Batch size for appending children blocks to a page (Notion limit is 100 per request)
+CHILD_BATCH_SIZE = 50
 
 
 def _rich_text(text: str) -> list[dict[str, Any]]:
@@ -85,6 +88,44 @@ def create_journal_entry(
     return response
 
 
+# ----------------------------------
+# Shared high-level helper
+# ----------------------------------
+
+
+def _create_page_with_chunks(
+    *,
+    keyword: str,
+    journal_date: date,
+    structured_chunks: list[str],
+    raw_first_chunk: str | None = None,
+) -> tuple[str, str]:
+    """Create a page and append *structured_chunks* (paragraph blocks).
+
+    Returns (page_id, page_url).
+    """
+
+    page = create_journal_entry(
+        keyword=keyword,
+        journal_date=journal_date,
+        structured=structured_chunks[0],
+        raw=raw_first_chunk,
+    )
+
+    page_id = page["id"]
+
+    # Append remaining structured chunks (if any)
+    children = [_paragraph_block(chunk) for chunk in structured_chunks[1:]]
+
+    for i in range(0, len(children), CHILD_BATCH_SIZE):
+        client.blocks.children.append(
+            block_id=page_id,
+            children=children[i : i + CHILD_BATCH_SIZE],
+        )
+
+    return page_id, page["url"]
+
+
 def push_from_files(
     processed_json_path: str | Path,
     raw_transcript_path: str | Path,
@@ -99,9 +140,6 @@ def push_from_files(
                 raw file name assuming *_YYYYMMDD_HHMMSS.txt pattern.
     Returns created page URL.
     """
-
-    import json
-    from src.date_utils import journal_date as _journal_date
 
     processed_data = json.loads(Path(processed_json_path).read_text(encoding="utf-8"))
     # Accept 'summary' as primary, fallback to 'keyword'
@@ -127,47 +165,26 @@ def push_from_files(
 
     logical_date = _journal_date(message_dt)
 
-    # ----------------------------------------
-    # 1) Create page with first chunk in props
-    # ----------------------------------------
-
-    page = create_journal_entry(
+    _, page_url = _create_page_with_chunks(
         keyword=title_text,
         journal_date=logical_date,
-        structured=structured_chunks[0],
+        structured_chunks=structured_chunks,
     )
 
-    page_id = page["id"]
-
-    # ------------------------------------------------
-    # 2) Append remaining chunks as paragraph blocks
-    # ------------------------------------------------
-
-    children: list[dict[str, Any]] = []
-
-    # Add remaining structured chunks (if any)
-    for chunk in structured_chunks[1:]:
-        children.append(_paragraph_block(chunk))
-
-    # Notion API allows up to 100 children per request; split accordingly
-    BATCH_SIZE = 50
-    for i in range(0, len(children), BATCH_SIZE):
-        client.blocks.children.append(
-            block_id=page_id,
-            children=children[i : i + BATCH_SIZE],
-        )
-
-    return page["url"]
+    return page_url
 
 
-def push_from_memory(
+# Public API – create entry from in-memory data and store artifacts
+
+
+def create_entry_from_memory(
     *,
     raw_transcript: str,
     polished_data: dict[str, str],
     message_dt: datetime,
     entry_id: str | None = None,
 ) -> tuple[str, str]:
-    """Create Notion journal entry from in-memory data and optionally save artifacts.
+    """Create Notion journal entry *and* save local artifacts from raw/polished data.
 
     Args:
         raw_transcript: The original transcript text
@@ -178,7 +195,6 @@ def push_from_memory(
     Returns:
         tuple of (notion_page_url, entry_directory_path)
     """
-    from src.date_utils import journal_date as _journal_date
 
     if entry_id is None:
         entry_id = str(uuid.uuid4())[:8]  # Short UUID for directory names
@@ -194,27 +210,25 @@ def push_from_memory(
     logical_date = _journal_date(message_dt)
 
     # ----------------------------------------
-    # 1) Create page with first chunk in props
+    # 1) Create Notion page with structured content
     # ----------------------------------------
 
-    page = create_journal_entry(
-        keyword=title_text,
-        journal_date=logical_date,
-        structured=structured_chunks[0],
-        raw=chunk_text(raw_transcript, MAX_CHARS)[0] if raw_transcript else None,
+    raw_first_chunk = (
+        chunk_text(raw_transcript, MAX_CHARS)[0] if raw_transcript else None
     )
 
-    page_id = page["id"]
+    page_id, page_url = _create_page_with_chunks(
+        keyword=title_text,
+        journal_date=logical_date,
+        structured_chunks=structured_chunks,
+        raw_first_chunk=raw_first_chunk,
+    )
 
     # ------------------------------------------------
-    # 2) Append remaining chunks as paragraph blocks
+    # 2) Append remaining chunks (raw transcript, etc.)
     # ------------------------------------------------
 
     children: list[dict[str, Any]] = []
-
-    # Add remaining structured chunks (if any)
-    for chunk in structured_chunks[1:]:
-        children.append(_paragraph_block(chunk))
 
     # Add raw transcript chunks if there are multiple and if raw transcript exists
     if raw_transcript:
@@ -224,12 +238,11 @@ def push_from_memory(
             for chunk in raw_chunks[1:]:
                 children.append(_paragraph_block(chunk))
 
-    # Notion API allows up to 100 children per request; split accordingly
-    BATCH_SIZE = 50
-    for i in range(0, len(children), BATCH_SIZE):
+    # Push children in batches
+    for i in range(0, len(children), CHILD_BATCH_SIZE):
         client.blocks.children.append(
             block_id=page_id,
-            children=children[i : i + BATCH_SIZE],
+            children=children[i : i + CHILD_BATCH_SIZE],
         )
 
     # ----------------------------------------
@@ -246,8 +259,6 @@ def push_from_memory(
     raw_path.write_text(raw_transcript, encoding="utf-8")
 
     # Save polished data
-    import json
-
     polished_path = entry_dir / "polished.json"
     polished_path.write_text(
         json.dumps(polished_data, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -258,7 +269,7 @@ def push_from_memory(
         "entry_id": entry_id,
         "message_timestamp_utc": message_dt.isoformat(),
         "journal_date": logical_date.isoformat(),
-        "notion_page_url": page["url"],
+        "notion_page_url": page_url,
         "notion_page_id": page_id,
         "title": title_text,
     }
@@ -267,4 +278,5 @@ def push_from_memory(
         json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    return page["url"], str(entry_dir)
+    return page_url, str(entry_dir)
+

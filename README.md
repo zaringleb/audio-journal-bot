@@ -117,6 +117,7 @@ audio-journal-bot/
 
 ## 🧪 Testing
 ```bash
+source .venv/bin/activate
 python -m unittest discover -s tests -v # Run all tests
 python -m unittest tests.test_text_utils -v # Test specific modules
 RUN_NOTION_TESTS=1 python -m unittest tests.test_notion_integration -v # Test Notion integration (requires API setup)
