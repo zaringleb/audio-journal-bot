@@ -38,6 +38,9 @@ logging.basicConfig(
     ],
 )
 
+# Reduce noise from HTTP client per-request INFO logs (e.g., getUpdates polling)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 def pipeline_blocking(audio_path: str, message_dt: datetime, user: str) -> str:
     """Execute the journal processing pipeline in a blocking manner.
